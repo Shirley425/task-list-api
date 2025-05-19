@@ -81,7 +81,7 @@ def mark_task_complete(task_id):
     task.mark_complete()
     db.session.commit()
 
-    #chat_post_message(task)
+    chat_post_message(task)
 
     return Response(status=204, mimetype="application/json")
 
