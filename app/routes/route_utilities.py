@@ -35,3 +35,17 @@ def chat_post_message(task):
         logger.info(result)
     except SlackApiError as e:
         logger.error(f"Error posting message: {e}")
+
+
+def create_model(cls, model_data, response_key):
+    try:
+        new_model = cls.from_dict(model_data)
+
+    except KeyError:
+        response = {"details": "Invalid data"}
+        abort(make_response(response, 400))
+
+    db.session.add(new_model)
+    db.session.commit()
+
+    return {response_key: new_model.to_dict()}, 201

@@ -1,6 +1,6 @@
 from flask import Blueprint, abort, make_response, request, Response
 from app.models.task import Task
-from .route_utilities import validate_model, chat_post_message
+from .route_utilities import validate_model, chat_post_message, create_model
 from sqlalchemy import asc, desc
 from ..db import db
 
@@ -9,18 +9,8 @@ tasks_bp = Blueprint("tasks_bp", __name__, url_prefix="/tasks")
 @tasks_bp.post("")
 def create_task():
     request_body = request.get_json()
+    return create_model(Task, request_body, "task")
 
-    try:
-        new_task = Task.from_dict(request_body)
-
-    except KeyError as error:
-        response = {"details": "Invalid data"}
-        abort(make_response(response, 400))
-
-    db.session.add(new_task)
-    db.session.commit()
-
-    return {"task": new_task.to_dict()}, 201
 
 @tasks_bp.get("")
 def get_all_tasks():
@@ -81,7 +71,7 @@ def mark_task_complete(task_id):
     task.mark_complete()
     db.session.commit()
 
-    chat_post_message(task)
+    #chat_post_message(task)
 
     return Response(status=204, mimetype="application/json")
 
