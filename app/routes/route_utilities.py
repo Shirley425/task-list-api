@@ -1,9 +1,11 @@
 from flask import abort, make_response
 from ..db import db
-from slack_sdk import WebClient
-from slack_sdk.errors import SlackApiError
 import logging
+import requests
 import os
+from dotenv import load_dotenv
+
+load_dotenv()
 
 
 def validate_model(cls, model_id):
@@ -11,7 +13,7 @@ def validate_model(cls, model_id):
         model_id = int(model_id)
     except:
         response = {"message": f"{cls.__name__} {model_id} invalid"}
-        abort(make_response(response , 400))
+        abort(make_response(response, 400))
 
     query = db.select(cls).where(cls.id == model_id)
     model = db.session.scalar(query)
@@ -23,18 +25,32 @@ def validate_model(cls, model_id):
     return model
 
 
-client = WebClient(token=os.environ.get("SLACK_BOT_TOKEN"))
 logger = logging.getLogger(__name__)
 
+
 def chat_post_message(task):
+    token = os.environ.get('SLACK_BOT_TOKEN')
+    channel = os.environ.get('SLACK_CHANNEL_ID')
+
     try:
-        result = client.chat_postMessage(
-            channel=os.environ.get('SLACK_CHANNEL_ID'),
-            text=(f"Someone just completed the task {task.title}")
+        response = requests.post(
+            "https://slack.com/api/chat.postMessage",
+            headers={
+                "Authorization": f"Bearer {token}",
+                "Content-Type": "application/json"
+            },
+
+            json={
+                "channel": channel,
+                "text": f"Someone just completed the task {task.title}"
+            }
         )
-        logger.info(result)
-    except SlackApiError as e:
-        logger.error(f"Error posting message: {e}")
+        if response.status_code == 200 and response.json().get("ok"):
+            logger.info("Slack message sent successfully.")
+        else:
+            logger.error(f"Slack API error: {response.json()}")
+    except Exception as e:
+        logger.error(f"Failed to send Slack message: {e}")
 
 
 def create_model(cls, model_data, response_key):
@@ -49,3 +65,5 @@ def create_model(cls, model_data, response_key):
     db.session.commit()
 
     return {response_key: new_model.to_dict()}, 201
+
+
